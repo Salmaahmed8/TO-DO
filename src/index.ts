@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import connectDB from "./config/db";
 import authRoutes from "./routes/authRoutes";
-import taskRoutes from "./routes/taskRoutes";
+import taskRoutes from "./routes/TaskRoutes";
 
 import "express-async-errors";
 

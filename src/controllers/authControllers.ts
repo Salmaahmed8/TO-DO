@@ -1,56 +1,55 @@
 import { Request, Response } from "express";
-import User from "../models/User";
-import generateToken from "../utils/generateToken";
-import { z } from "zod";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { User } from "../models/User";
+import { registerSchema, loginSchema } from "../validations/authValidation";
+import Config from "../config/index";
 
-// Validation schema
-const registerSchema = z.object({
-  name: z.string().min(3, "Name must be at least 3 characters long"),
-  email: z.string().email("Invalid email format"),
-  password: z.string().min(6, "Password must be at least 6 characters long"),
-});
-
-export const registerUser = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response) => {
   try {
-    const validatedData = registerSchema.parse(req.body);
-    const { name, email, password } = validatedData;
-
-    const userExists = await User.findOne({ email });
-    if (userExists) return res.status(400).json({ message: "User already exists" });
-
-    const user = await User.create({ name, email, password });
-
-    if (user) {
-      res.status(201).json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        token: generateToken(user._id.toString()),
-      });
-    } else {
-      res.status(400).json({ message: "Invalid user data" });
+    const validationResult = registerSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ message: validationResult.error.format() });
     }
+    
+    const { name, email, password } = req.body;
+    let user = await User.findOne({ email });
+    if (user) {
+      return res.status(409).json({ message: "User already exists" });
+    }
+    
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user = await User.create({ name, email, password: hashedPassword });
+    
+    res.status(201).json({
+      message: "User registered successfully",
+      token: generateToken(user.id),
+    });
   } catch (error) {
-    res.status(400).json({ message: error.errors });
+    res.status(500).json({ message: "Server error", error });
   }
 };
 
-export const loginUser = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response) => {
   try {
-    const { email, password } = req.body;
-
-    const user = await User.findOne({ email });
-    if (user && (await user.matchPassword(password))) {
-      res.json({
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        token: generateToken(user._id.toString()),
-      });
-    } else {
-      res.status(401).json({ message: "Invalid email or password" });
+    const validationResult = loginSchema.safeParse(req.body);
+    if (!validationResult.success) {
+      return res.status(400).json({ message: validationResult.error.format() });
     }
+    
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+    
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+    
+    res.json({ token: generateToken(user.id) });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error });
   }
 };
