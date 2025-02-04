@@ -11,6 +11,13 @@ Built with **TypeScript**, **MongoDB**, and **Zod** for validation.
 -  **Validation** with Zod
 -  **Secure Environment Variables** (dotenv)
 
+## Task Management
+- **Create Tasks** with title, description, and due date
+- **Update Tasks** (modify title, description, or status)
+- **Mark Tasks as Completed**
+- **Delete Tasks**
+- **Retrieve All User Tasks**
+
 ## Tech Stack
 
 - **Backend:** Node.js, Express.js, TypeScript
